@@ -99,18 +99,20 @@ Las decisiones que se toman recién durante el build quedan marcadas **[PENDIENT
 
 ---
 
-## ADR-007 — Diagramas en C4 nativo de Mermaid, no `flowchart`
+## ADR-007 — Diagramas C4 con Mermaid `flowchart`/`sequenceDiagram` (renderizable en GitHub)
 
-**Estado:** Aceptada (fase de análisis) — **revierte** la decisión previa de usar `flowchart`
+**Estado:** Aceptada — **decisión final** tras dos idas y vueltas (ver historia abajo)
 
-**Contexto.** Los primeros diagramas se hicieron con `flowchart` de Mermaid, argumentando compatibilidad de render (el soporte C4 de Mermaid es experimental). Luego se incorporó la skill `c4-architecture`, que estandariza sintaxis **C4 nativa** (`C4Context`, `C4Container`, `C4Component`, `C4Deployment`, `C4Dynamic`).
+**Contexto.** El "Documento de análisis" (contexto + contenedores) es entregable explícito y se entrega en un repo de **GitHub**. La sintaxis **C4 nativa de Mermaid** (`C4Context`, `C4Container`, …) es **experimental** y **GitHub puede no renderizarla** — el evaluador vería un error en vez del diagrama, dañando justo el criterio Diseño (25%).
 
-**Decisión.** Adoptar **C4 nativo** como estándar de la casa para todos los diagramas. Se conserva la **descripción textual/ASCII** en cada archivo como fallback fiel por si el render de destino no soporta C4.
+**Decisión.** Modelar los diagramas C4 (contexto, contenedores, componentes, deployment, dinámico) con **`flowchart` y `sequenceDiagram`**, que GitHub renderiza de forma garantizada, preservando toda la semántica C4 que el enunciado pide: nombre + tecnología + responsabilidad por contenedor, y protocolo + propósito por flecha. Se conserva la descripción ASCII como referencia adicional.
 
-**Alternativas consideradas.**
-- *Seguir con `flowchart`:* renderiza en todos lados, pero falsea la semántica C4 (distingue Person/System/Container/Component solo con color). Con una skill que estandariza C4, la consistencia y la corrección semántica pesan más que el margen de compatibilidad.
+**Historia de la decisión (transparente).**
+1. Primera versión: `flowchart` (por compatibilidad).
+2. Se incorporó la skill `c4-architecture` → se migró a **C4 nativo** por purismo de notación.
+3. Al preparar la entrega en GitHub se detectó que C4 nativo **puede no renderizar** ahí → se volvió a `flowchart`/`sequenceDiagram`. **La confiabilidad de render en la plataforma de entrega le gana al purismo de notación.**
 
-**Consecuencias.** (+) Diagramas semánticamente correctos, consistentes con el estándar del equipo, y ahora completos (se agregaron componentes, deployment y dinámico). (−) Riesgo de render en herramientas viejas → mitigado con el fallback textual en cada archivo.
+**Consecuencias.** (+) Los diagramas se ven sí o sí en el repo entregado; el flujo dinámico incluso queda mejor como `sequenceDiagram`. (−) No se usa la notación C4 canónica, pero la información C4 (actores, límites vía `subgraph`, tech y protocolo) está toda presente.
 
 ---
 
@@ -245,6 +247,36 @@ Las decisiones que se toman recién durante el build quedan marcadas **[PENDIENT
 ## Nota de diseño — `APPROVED` como transición auditada, estado final `SETTLED`
 
 La máquina de estados separa `APPROVED` de `SETTLED` (regla del proyecto: decisión de compliance ≠ liquidación). En la implementación, aprobar registra **dos** filas de auditoría (`PENDING_REVIEW→APPROVED` y `APPROVED→SETTLED`) dentro de una sola transacción DB; el estado **persistido** final es `SETTLED`. `APPROVED` existe como paso lógico auditado, no como estado terminal huérfano. La separación settle-automático / hold-compliance se respetó en métodos/servicios distintos (`TransfersService.settleImmediately` vs. `ComplianceService`).
+
+---
+
+## ADR-016 — Filtro global de excepciones (código semántico en toda respuesta de error)
+
+**Estado:** Aceptada (post-evaluación contra el enunciado)
+
+**Contexto.** El enunciado pide "códigos de respuesta semánticos (no solo HTTP)". Las excepciones de dominio ya llevaban `code`, pero los errores de **validación** (400 del `ValidationPipe`) y los del framework devolvían el shape default de Nest **sin** `code`.
+
+**Decisión.** Un `AllExceptionsFilter` global (`@Catch()`, registrado vía `APP_FILTER`) normaliza **toda** respuesta de error a `{ code, message, statusCode }`. Las excepciones de dominio conservan su `code`; validación/framework reciben un código por defecto (`VALIDATION_ERROR`, `UNAUTHORIZED`, …); los errores inesperados se loguean server-side y devuelven `INTERNAL_ERROR` sin filtrar internals.
+
+**Alternativas consideradas.**
+- *Dejar el `code` embebido en cada excepción (estado previo):* incompleto — los 400 de validación no cumplían "código semántico". Descartada.
+
+**Consecuencias.** (+) Contrato de error consistente y semántico en el 100% de los endpoints; cierra la promesa de `BUILD_CONVENTIONS §3`. (−) Un punto central que hay que mantener alineado con el catálogo de errores.
+
+---
+
+## ADR-017 — Seguridad básica: rate limiting + `helmet`
+
+**Estado:** Aceptada (post-evaluación contra el enunciado)
+
+**Contexto.** "Calidad del código → seguridad básica" (25%). Un servicio que mueve dinero debería, como mínimo, limitar el abuso y endurecer los headers HTTP.
+
+**Decisión.** `@nestjs/throttler` como guard global (límite y ventana **configurables** por env: `THROTTLE_LIMIT`, `THROTTLE_TTL`; default 100/60s) + `helmet()` para headers seguros. Verificado en vivo: `429` al superar el límite y headers `X-Content-Type-Options`/`X-Frame-Options`/HSTS presentes.
+
+**Alternativas consideradas.**
+- *Throttle por-endpoint más fino (más estricto en login/transferencias):* mejora futura; el guard global cubre la línea base sin sobre-ingeniería.
+
+**Consecuencias.** (+) Protección básica anti-abuso y hardening de headers, configurable por entorno. (−) Requiere subir el límite en tests (env) para no interferir con la suite.
 
 ---
 

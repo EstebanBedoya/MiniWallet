@@ -74,6 +74,7 @@ docker compose exec -T db psql -U miniwallet -d miniwallet -t < scripts/validate
 - Sin dinero real ni rails de pago: el saldo es interno (semilla inicial). Ver `docs/CONTEXT.md`.
 - Validación de compliance **manual** (no motor AML real). "Sospechosas" son heurísticas explicables, no ML. El criterio C4 (vaciado de cuenta) está diferido (requiere snapshot de saldo, ADR-005), y el criterio de velocity marca desde la N-ésima transferencia de la ráfaga en adelante.
 - JWT sin refresh token ni revocación en esta versión.
+- Seguridad básica presente (rate limiting global vía `@nestjs/throttler` + `helmet`); un endurecimiento por-endpoint (límites más estrictos en login/transferencias) queda como mejora futura.
 - Sin multi-moneda (todo USD). Un solo nodo de API + una DB.
 - Detalle completo en `docs/RISKS_AND_SCALABILITY.md` §1.
 

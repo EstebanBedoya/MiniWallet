@@ -110,3 +110,16 @@ Se corrió una revisión adversarial del árbol completo (ángulos de correctitu
 | 2 | `VELOCITY` subreporta la ráfaga (ventana solo hacia atrás). | Plausible, menor | Documentado como limitación conocida; el emisor igual aparece en el reporte. |
 
 Este es el valor del review con contexto fresco: encontró una discrepancia diseño-vs-código que las suites en verde no detectaban.
+
+---
+
+## Evaluación contra el enunciado (cierre de huecos)
+
+Tras una evaluación explícita contra `PRUEBA_TECNICA.md`, se cerraron 4 huecos que las suites en verde no cubrían:
+
+| # | Hueco | Resolución | Verificación |
+|---|---|---|---|
+| 1 | **Sin test de concurrencia** (NFR explícito + `TEST_PLAN` lo prometía) | 2 tests e2e: 5 transferencias concurrentes sobre el mismo emisor (exactamente 4 pasan, 1 falla, saldo nunca negativo) + cruzadas A↔B sin deadlock | ✅ 10/10 e2e |
+| 2 | **Diagramas C4 podían no renderizar en GitHub** | Convertidos a `flowchart`/`sequenceDiagram` (render garantizado), preservando semántica C4 (ADR-007) | ✅ |
+| 3 | **Códigos semánticos incompletos** (validación sin `code`) | `AllExceptionsFilter` global normaliza toda respuesta de error (ADR-016) | ✅ |
+| 4 | **Sin seguridad básica** | `@nestjs/throttler` (rate limit) + `helmet` (ADR-017) | ✅ 429 al superar límite; headers presentes |
