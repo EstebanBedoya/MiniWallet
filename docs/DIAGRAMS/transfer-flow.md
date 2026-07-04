@@ -18,7 +18,7 @@ sequenceDiagram
     C->>L: 3. postJournal(TRANSFER_HOLD)
     L->>DB: lock emisor (FOR UPDATE), USER_A −m / COMPLIANCE_HOLD +m, tx=PENDING_REVIEW
     T-->>Sender: 4. 202 TRANSACTION_PENDING_REVIEW
-    Note over Sender,DB: El emisor ya fue descontado; el receptor NO recibió nada (dinero en HOLD)
+    Note over Sender,DB: El emisor ya fue descontado, el receptor NO recibió nada (dinero en HOLD)
     Admin->>C: 5. POST /admin/transactions/:id/approve
     C->>L: 6. postJournal(HOLD_RELEASE)
     L->>DB: 7. COMPLIANCE_HOLD −m / USER_B +m, tx=APPROVED → SETTLED
