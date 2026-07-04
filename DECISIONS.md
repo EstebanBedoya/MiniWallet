@@ -280,6 +280,52 @@ La máquina de estados separa `APPROVED` de `SETTLED` (regla del proyecto: decis
 
 ---
 
+## ADR-018 — Frontend en Next.js servido en Docker con proxy de API vía `rewrites` (no CORS)
+
+**Estado:** Aceptada
+
+**Contexto.** El enunciado pide una interfaz para consumir todos los endpoints. El backend NO tiene CORS habilitado, y habilitarlo acoplaría el backend a un origen de frontend. La app es 100% cliente detrás de JWT (no necesita SSR).
+
+**Decisión.** Frontend en **Next.js 16 (App Router) + shadcn/ui**, compilado a `output: standalone` y servido en un contenedor propio (`web`). La comunicación con el API usa **`rewrites` de Next**: el browser siempre llama a `/api/*` del mismo origen y Next reescribe server-side a `http://api:3000/*` por la red interna de Compose. El navegador entra por `http://localhost:3001`.
+
+**Alternativas consideradas.**
+- *Habilitar CORS en el backend:* más simple pero mete acoplamiento y expone el origen; se descartó para no tocar `src/` del backend.
+- *SPA Vite + nginx:* válido, pero el usuario eligió Next.js/shadcn.
+
+**Consecuencias.** (+) Cero cambios en el backend, cero problema de CORS, mismo origen. (−) La URL del rewrite se hornea en build (`API_INTERNAL_URL` como build arg); para Compose es estable (`http://api:3000`).
+
+---
+
+## ADR-019 — Auth del frontend: JWT en `localStorage` + decode client-side para el rol
+
+**Estado:** Aceptada
+
+**Contexto.** El backend emite un JWT bearer (no cookie). `GET /auth/me` no devuelve el `role`, pero la UI necesita saber si mostrar el panel admin.
+
+**Decisión.** El token se guarda en `localStorage` y se adjunta como `Authorization: Bearer` vía un wrapper de `fetch`. El guard de rutas es **client-side** (redirige a `/login`). Para el rol, se **decodifica el payload del JWT** (base64, no cifrado) y se lee el claim `role`. La autorización REAL la sigue haciendo el backend (`JwtAuthGuard`/`AdminGuard`) en cada request; el gating del front es solo UX. Un `401` global limpia la sesión.
+
+**Alternativas consideradas.**
+- *Cookie httpOnly + guard en `proxy.ts`:* más seguro contra XSS, pero el backend no emite cookie y el enunciado no lo pide; sería reescribir el contrato de auth.
+
+**Consecuencias.** (+) Simple, sin cambios de backend, rol disponible sin endpoint extra. (−) Token en `localStorage` (aceptable para esta prueba; endurecer a cookie httpOnly es mejora futura).
+
+---
+
+## ADR-020 — Panel de aprobaciones alimentado por el endpoint de sospechosas
+
+**Estado:** Aceptada
+
+**Contexto.** El admin necesita ver y aprobar/rechazar las transferencias en `PENDING_REVIEW`. Pero la API **no expone un listado de "todas las pendientes"**: solo `GET /admin/transactions/suspicious` + `approve`/`reject` por id.
+
+**Decisión.** El panel de Aprobaciones se alimenta del endpoint de **sospechosas**, filtrando `status === 'PENDING_REVIEW'`. Es correcto porque toda transferencia ≥ $1000 queda en hold **y siempre** se marca `HIGH_AMOUNT` en el reporte, así que aparece garantizado. La tab de "Sospechosas" muestra el reporte completo con sus `reasons`.
+
+**Alternativas consideradas.**
+- *Agregar un endpoint `GET /admin/transactions?status=PENDING_REVIEW` al backend:* sería lo ideal en producción, pero excede el alcance (no tocar el backend) y no es necesario dada la garantía `HIGH_AMOUNT`.
+
+**Consecuencias.** (+) Funciona con la API existente sin tocar el backend. (−) Acopla el listado de aprobaciones al detector de sospechosas; si en el futuro el umbral de hold y el de `HIGH_AMOUNT` divergen, habría que revisar (hoy ambos son $1000).
+
+---
+
 ## Nota sobre uso de IA (se amplía en AI_USAGE.md)
 
 Los documentos de análisis (CONTEXT, DOMAIN_SPEC, diagramas, TEST_PLAN, este ADR) fueron **redactados con asistencia de IA a partir del enunciado y del modelo de dominio ya fijado en `CLAUDE.md`**. Validación: revisión manual de cada supuesto contra el texto del enunciado, verificación de que no se inventaron requisitos ni se relajaron los existentes, y coherencia cruzada entre documentos. El detalle por artefacto se registra en `AI_USAGE.md` durante el build.

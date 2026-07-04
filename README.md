@@ -6,7 +6,9 @@ Servicio de transferencias de saldo entre usuarios, con ledger de doble entrada,
 
 ## Stack
 
-NestJS (Node 22 + TypeScript) · PostgreSQL 16 · TypeORM · JWT · Docker Compose · pnpm · Jest.
+Backend: NestJS (Node 22 + TypeScript) · PostgreSQL 16 · TypeORM · JWT · pnpm · Jest.
+Frontend: Next.js 16 (App Router) · shadcn/ui · Tailwind v4.
+Orquestación: Docker Compose (`db` + `api` + `web`).
 Justificación en `docs/DIAGRAMS/containers.md` y `DECISIONS.md`.
 
 ## Cómo ejecutar
@@ -17,13 +19,41 @@ Requisitos: Docker + Docker Compose.
 docker compose up --build
 ```
 
-Levanta `api` (NestJS) + `db` (PostgreSQL). La API espera a que la DB esté healthy antes de arrancar.
+Levanta `api` (NestJS) + `db` (PostgreSQL) + `web` (frontend Next.js). La API espera a que la DB esté healthy antes de arrancar; el `web` espera a la API.
 
 Verificar que está arriba:
 
 ```bash
 curl http://localhost:3000/health
 # { "status": "ok", "info": { "database": { "status": "up" } }, ... }
+```
+
+## Frontend
+
+Interfaz web mobile-first en **Next.js 16 + shadcn/ui** (carpeta `frontend/`). Con `docker
+compose up` queda disponible en:
+
+```
+http://localhost:3001
+```
+
+Consume **todos** los endpoints de la API respetando la lógica de dominio (holds ≥ $1000,
+idempotencia, códigos de error semánticos, gating de admin por rol). No habla con la API por
+CORS: usa un proxy same-origin (`/api/*` → `api:3000`) vía `rewrites` de Next (ADR-018), así
+que el backend no se toca. Detalle en `docs/features/frontend.md`.
+
+Flujo de demo:
+1. Registrate en `/register` → ves tu saldo semilla ($5.000).
+2. Enviá $250 a otro usuario → se liquida al instante (SETTLED).
+3. Enviá $1.500 → aviso de compliance, queda "En revisión" (el saldo se descuenta ya).
+4. Entrá como admin (`ADMIN_EMAIL`/`ADMIN_PASSWORD` del compose) → panel de compliance →
+   aprobás el hold y recién ahí se acredita al receptor.
+
+Desarrollo local del front (sin Docker, con la API en `localhost:3000`):
+
+```bash
+cd frontend && npm install && npm run dev   # http://localhost:3000 -> conflictúa con la API;
+# usá otro puerto: PORT=3001 npm run dev, con API_INTERNAL_URL=http://localhost:3000
 ```
 
 ### Desarrollo local (sin Docker para la API)

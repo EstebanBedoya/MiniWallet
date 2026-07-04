@@ -123,3 +123,20 @@ Tras una evaluación explícita contra `PRUEBA_TECNICA.md`, se cerraron 4 huecos
 | 2 | **Diagramas C4 podían no renderizar en GitHub** | Convertidos a `flowchart`/`sequenceDiagram` (render garantizado), preservando semántica C4 (ADR-007) | ✅ |
 | 3 | **Códigos semánticos incompletos** (validación sin `code`) | `AllExceptionsFilter` global normaliza toda respuesta de error (ADR-016) | ✅ |
 | 4 | **Sin seguridad básica** | `@nestjs/throttler` (rate limit) + `helmet` (ADR-017) | ✅ 429 al superar límite; headers presentes |
+
+---
+
+## Frontend web (Next.js + shadcn/ui)
+
+| Artefacto | Qué generó la IA | Cómo se validó |
+|---|---|---|
+| SPEC `docs/features/frontend.md` | Pantallas, estados consumidos, mapeo de errores, restricción del panel admin | Revisión manual contra el mapa real de endpoints (extraído del código) y la máquina de estados de `DOMAIN_SPEC §2`. |
+| `frontend/` (Next 16 App Router): capa `lib/` (api client tipado, auth context, decode JWT, mapa de errores, helpers de dinero), pantallas (login/register/dashboard/transfer/history/admin), componentes UI (balance-card, status-badge, transaction-row, bottom-nav), `next.config` con rewrites, Dockerfile standalone | Implementación completa | **Build + lint verdes** (`npm run build`, `npm run lint`). **Verificado end-to-end contra el stack real en Docker** (los 3 servicios): flujo por browser (registro→dashboard, hold ≥$1000 con aviso→202→badge, aprobar con confirmación→SETTLED) + flujo por `curl` a través del proxy (`/api/*`): settle <$1000, hold ≥$1000, approve/reject, 403 no-admin, saldos exactos (emisor −1500 al instante, receptor +1500 recién al aprobar). |
+| Diseño visual (paleta navy+dorado+violeta, IBM Plex, WCAG) | Sistema de diseño del motor `ui-ux-pro-max` para producto fintech | Aplicado a tokens shadcn; verificado en dark mode a 390px (mobile-first, sin scroll horizontal, touch targets 44px). |
+
+### Correcciones sobre la salida de IA (no se aceptó ciego)
+- **Base UI, no Radix:** el preset de shadcn (Nova) usa Base UI. El `asChild` de Radix no existe → se corrigió a la prop `render` en `Button` y `AlertDialogTrigger`. Además `AlertDialogAction` es un `Button` plano (no cierra solo) → se controló el estado `open` del diálogo explícitamente.
+- **Bug de UX encontrado en la verificación por browser:** el usuario admin se crea por bootstrap **sin wallet**, así que `GET /accounts/me` devolvía `ACCOUNT_NOT_FOUND` y el dashboard mostraba un error rojo. Se corrigió: (1) el dashboard tolera la cuenta faltante con una nota neutral (carga saldo e historial de forma independiente vía `Promise.allSettled`), y (2) el admin aterriza en `/admin` (su propósito real) por landing basado en rol.
+- **Bug circular de fuentes del scaffold:** `--font-sans: var(--font-sans)` (auto-referencia) caía a serif; se apuntó a la variable real de `next/font` con fallback literal.
+- **CVE de Next.js:** se verificó Next ≥ 16.1.5 y React ≥ 19.2.4 (versiones parcheadas) antes de dar por hecho el scaffold.
+- **Lint del React Compiler:** los fetch-on-mount disparaban `set-state-in-effect`; se documentaron con `eslint-disable` justificado (uso aceptado de Effect para carga inicial), no se silenció el linter globalmente.
