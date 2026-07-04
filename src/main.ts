@@ -1,9 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Secure HTTP headers.
+  app.use(helmet());
 
   // Global input validation (whitelist strips unknown props; DTOs enforce shape).
   app.useGlobalPipes(

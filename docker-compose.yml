@@ -29,6 +29,8 @@ services:
       SEED_BALANCE: ${SEED_BALANCE:-5000.00}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@miniwallet.local}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin12345}
+      THROTTLE_TTL: ${THROTTLE_TTL:-60000}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-100}
     ports:
       - "${PORT:-3000}:3000"
     depends_on:
