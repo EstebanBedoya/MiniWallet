@@ -2,35 +2,30 @@
 
 Topología de despliegue. Cumple la restricción técnica: todo el back-end levanta con `docker compose up`.
 
-## Código Mermaid (C4Deployment)
+## Diagrama (Mermaid — Deployment)
 
 ```mermaid
-C4Deployment
-  title Deployment - MiniWallet (local / demo)
+flowchart TB
+    ui["💻 Cliente<br/><i>navegador / app móvil<br/>(fuera del alcance de build)</i>"]
 
-  Deployment_Node(client, "Dispositivo del usuario", "Navegador / app móvil") {
-    Container(ui, "Cliente", "Web/Móvil", "Consume el API (fuera del alcance de build)")
-  }
+    subgraph host["🖥️ Host Docker (Docker Engine)"]
+        subgraph compose["🐳 docker compose up"]
+            api["📦 Contenedor <b>api</b><br/>NestJS (Node 22)<br/><i>REST + JWT + lógica transaccional</i>"]
+            db["📦 Contenedor <b>db</b><br/>PostgreSQL 16<br/><i>datos + ledger + auditoría</i>"]
+            pgdata[("💾 Volumen <b>pgdata</b><br/><i>persistencia de PostgreSQL</i>")]
+        end
+    end
 
-  Deployment_Node(host, "Host Docker", "Docker Engine") {
-    Deployment_Node(compose, "Docker Compose", "docker compose up") {
-      Deployment_Node(apiNode, "Contenedor api", "Node.js") {
-        Container(api, "API MiniWallet", "NestJS", "REST + JWT + lógica transaccional")
-      }
-      Deployment_Node(dbNode, "Contenedor db", "PostgreSQL 16") {
-        ContainerDb(db, "miniwallet_db", "PostgreSQL", "Datos + ledger + auditoría")
-      }
-      Deployment_Node(vol, "Volumen persistente", "Docker volume") {
-        ContainerDb(pgdata, "pgdata", "Volume", "Persistencia de PostgreSQL")
-      }
-    }
-  }
+    ui -- "Llamadas REST [HTTPS/JSON]" --> api
+    api -- "SQL sobre la red interna de Compose [TCP 5432]" --> db
+    db -- "persiste datos" --> pgdata
 
-  Rel(ui, api, "Llamadas REST", "HTTPS/JSON")
-  Rel(api, db, "SQL sobre red interna de Compose", "TCP 5432")
-  Rel(db, pgdata, "Persiste datos")
-
-  UpdateLayoutConfig($c4ShapeInRow="1", $c4BoundaryInRow="1")
+    classDef svc fill:#1f6feb,stroke:#0b3d91,color:#fff;
+    classDef store fill:#2ea043,stroke:#125c26,color:#fff;
+    classDef ext fill:#e8edf5,stroke:#556,color:#111;
+    class api svc;
+    class db,pgdata store;
+    class ui ext;
 ```
 
 ## Notas de despliegue

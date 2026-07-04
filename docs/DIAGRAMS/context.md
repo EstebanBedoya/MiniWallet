@@ -28,26 +28,26 @@ Sistema como **caja negra**: actores externos y qué entra/sale. No muestra tecn
         └──────────────────────────┘
 ```
 
-## Código Mermaid (C4 — nivel 1: Contexto)
+## Diagrama (Mermaid — nivel 1: Contexto C4)
 
 ```mermaid
-C4Context
-  title Diagrama de Contexto - MiniWallet
+flowchart TB
+    user["👤 Usuario registrado<br/><i>(app móvil / web)</i>"]
+    admin["👤 Administrador / Compliance"]
+    sut(["🏦 <b>MiniWallet</b><br/>Transferencias entre usuarios,<br/>saldo y auditoría"])
 
-  Person(user, "Usuario registrado", "App móvil/web. Transfiere saldo y consulta su historial")
-  Person(admin, "Administrador / Compliance", "Revisa sospechosas y aprueba/rechaza transacciones ≥ $1000")
+    user -- "Registro/login, transferir, ver historial<br/>[HTTPS/JSON]" --> sut
+    admin -- "Consultar sospechosas, aprobar/rechazar<br/>[HTTPS/JSON]" --> sut
+    sut -. "Confirmación (SETTLED) o retención<br/>(PENDING_REVIEW) + código semántico" .-> user
+    sut -. "Reporte de sospechosas / nuevo estado" .-> admin
 
-  System(miniwallet, "MiniWallet", "Servicio de transferencias entre usuarios, saldo y auditoría")
-
-  Rel(user, miniwallet, "Registro/login, transferir, ver historial", "HTTPS/JSON")
-  Rel(admin, miniwallet, "Consultar sospechosas, aprobar/rechazar", "HTTPS/JSON")
-  Rel(miniwallet, user, "Confirmación (SETTLED) o retención (PENDING_REVIEW) + código semántico", "HTTPS/JSON")
-  Rel(miniwallet, admin, "Reporte de sospechosas / nuevo estado", "HTTPS/JSON")
-
-  UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
+    classDef sys fill:#1f6feb,stroke:#0b3d91,color:#fff;
+    classDef actor fill:#e8edf5,stroke:#556,color:#111;
+    class sut sys;
+    class user,admin actor;
 ```
 
-> **Nota de notación:** se usa C4 nativo de Mermaid (estándar de la casa, ver `DECISIONS.md` ADR-007). Si el destino de render no soporta bien `C4Context`, la descripción textual de arriba es el fallback fiel.
+> **Nota de notación:** se usa `flowchart` de Mermaid (renderiza en GitHub de forma garantizada) manteniendo la semántica C4 — actores, sistema (caja negra), protocolo y propósito en cada flecha (líneas sólidas = petición, punteadas = respuesta). Ver `DECISIONS.md` ADR-007.
 
 ## Actores y flujos
 

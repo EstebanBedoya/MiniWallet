@@ -16,35 +16,36 @@ Abre el contenedor **API MiniWallet** en sus módulos NestJS. Solo se documenta 
 ## Código Mermaid (C4Component)
 
 ```mermaid
-C4Component
-  title Componentes - API MiniWallet
+flowchart TB
+    user["👤 Usuario"]
+    admin["👤 Admin/Compliance"]
 
-  Person(user, "Usuario", "App móvil/web")
-  Person(admin, "Admin/Compliance", "Revisión")
-  ContainerDb(db, "PostgreSQL", "TypeORM", "accounts, ledger_entries, transactions, audit_log")
+    subgraph api["API MiniWallet (NestJS)"]
+        auth["<b>AuthModule</b><br/><i>registro, login, guards JWT</i>"]
+        transfers["<b>TransfersModule</b><br/><i>orquesta transferencia,<br/>decide ruta por umbral, historial</i>"]
+        compliance["<b>ComplianceModule</b><br/><i>hold, aprobar/rechazar,<br/>detección de sospechosas</i>"]
+        ledger["<b>LedgerModule</b><br/><i>asientos doble entrada,<br/>saldos, FOR UPDATE</i>"]
+        audit["<b>AuditModule</b><br/><i>registro de auditoría</i>"]
+    end
+    db[("<b>PostgreSQL</b><br/><i>accounts · ledger_entries<br/>transactions · audit_log</i>")]
 
-  Container_Boundary(api, "API MiniWallet (NestJS)") {
-    Component(auth, "AuthModule", "Nest + JWT", "Registro, login, guards")
-    Component(transfers, "TransfersModule", "Nest", "Orquesta transferencia, decide ruta por umbral")
-    Component(compliance, "ComplianceModule", "Nest", "Hold, aprobar/rechazar, detección de sospechosas")
-    Component(ledger, "LedgerModule", "Nest + TypeORM", "Asientos doble entrada, saldos, FOR UPDATE")
-    Component(audit, "AuditModule", "Nest", "Registro de auditoría")
-    Component(history, "HistoryModule", "Nest", "Historial paginado")
-  }
+    user -- "registro/login, transferir, historial" --> auth
+    user --> transfers
+    admin -- "sospechosas, aprobar/rechazar" --> compliance
+    transfers -- "hold >= $1000" --> compliance
+    transfers -- "debita/acredita SOLO vía ledger" --> ledger
+    compliance -- "hold/reverso/settlement SOLO vía ledger" --> ledger
+    transfers -- "registra" --> audit
+    compliance -- "registra transición" --> audit
+    ledger -- "asientos + saldos (tx ACID) [SQL]" --> db
+    transfers -- "historial paginado [SQL]" --> db
 
-  Rel(user, auth, "Registro/login", "HTTPS/JSON")
-  Rel(user, transfers, "Transferir", "HTTPS/JSON")
-  Rel(user, history, "Ver historial", "HTTPS/JSON")
-  Rel(admin, compliance, "Sospechosas, aprobar/rechazar", "HTTPS/JSON")
-
-  Rel(transfers, ledger, "Debita/acredita vía ledger")
-  Rel(compliance, ledger, "Hold, reverso, settlement vía ledger")
-  Rel(transfers, audit, "Registra operación")
-  Rel(compliance, audit, "Registra transición")
-  Rel(ledger, db, "Asientos + saldos (tx ACID)", "SQL")
-  Rel(history, db, "Lee historial paginado", "SQL")
-
-  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
+    classDef mod fill:#1f6feb,stroke:#0b3d91,color:#fff;
+    classDef store fill:#2ea043,stroke:#125c26,color:#fff;
+    classDef actor fill:#e8edf5,stroke:#556,color:#111;
+    class auth,transfers,compliance,ledger,audit mod;
+    class db store;
+    class user,admin actor;
 ```
 
 > Punto clave para el review: **tanto `TransfersModule` como `ComplianceModule` escriben dinero SOLO a través de `LedgerModule`**. No hay dos caminos de escritura al saldo. La separación de responsabilidades no rompe la única-puerta-al-dinero.

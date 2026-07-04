@@ -29,25 +29,28 @@ Abre la caja negra de MiniWallet. Cada contenedor: **nombre · tecnología · re
   Todo orquestado por Docker Compose (un solo comando: `docker compose up`).
 ```
 
-## Código Mermaid (C4 — nivel 2: Contenedores)
+## Diagrama (Mermaid — nivel 2: Contenedores C4)
 
 ```mermaid
-C4Container
-  title Diagrama de Contenedores - MiniWallet
+flowchart TB
+    user["👤 Usuario<br/><i>(app móvil/web)</i>"]
+    admin["👤 Administrador / Compliance"]
 
-  Person(user, "Usuario", "App móvil/web")
-  Person(admin, "Administrador / Compliance", "Revisión de compliance")
+    subgraph compose["🐳 Docker Compose — docker compose up"]
+        api["<b>API MiniWallet</b><br/>NestJS (Node.js + TypeScript)<br/><i>Auth JWT · transferencias · historial · admin<br/>Máquina de estados + invariantes</i>"]
+        db[("<b>Base de datos transaccional</b><br/>PostgreSQL<br/><i>users · accounts · ledger_entries (append-only)<br/>journals · transactions · audit_log</i>")]
+    end
 
-  Container_Boundary(sys, "MiniWallet") {
-    Container(api, "API MiniWallet", "NestJS (Node.js + TypeScript)", "Auth JWT, transferencias, historial, admin. Máquina de estados + invariantes contables")
-    ContainerDb(db, "Base de datos transaccional", "PostgreSQL", "users, accounts, ledger_entries (append-only), transactions, audit_log")
-  }
+    user -- "Login, transferir, historial<br/>[HTTPS/JSON]" --> api
+    admin -- "Sospechosas, aprobar/rechazar<br/>[HTTPS/JSON]" --> api
+    api -- "tx ACID · SELECT … FOR UPDATE<br/>asientos de ledger + auditoría<br/>[TCP/SQL vía TypeORM]" --> db
 
-  Rel(user, api, "Login, transferir, historial", "HTTPS/JSON")
-  Rel(admin, api, "Sospechosas, aprobar/rechazar", "HTTPS/JSON")
-  Rel(api, db, "tx ACID, SELECT … FOR UPDATE, asientos de ledger + auditoría", "TCP/SQL (TypeORM)")
-
-  UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
+    classDef svc fill:#1f6feb,stroke:#0b3d91,color:#fff;
+    classDef store fill:#2ea043,stroke:#125c26,color:#fff;
+    classDef actor fill:#e8edf5,stroke:#556,color:#111;
+    class api svc;
+    class db store;
+    class user,admin actor;
 ```
 
 > Todo orquestado por Docker Compose (`docker compose up`). La topología de despliegue está en `deployment.md`; el detalle interno de la API en `components.md`.

@@ -2,31 +2,27 @@
 
 Muestra el flujo numerado de la **tensión central T1** (`DOMAIN_SPEC.md` §1): reflejo inmediato en el emisor + retención por compliance. Es el escenario que más se evalúa.
 
-## Código Mermaid (C4Dynamic)
+## Diagrama (Mermaid — secuencia)
 
 ```mermaid
-C4Dynamic
-  title Flujo - Transferencia >= $1000 (hold de compliance)
+sequenceDiagram
+    actor Sender as Emisor
+    participant T as TransfersModule
+    participant C as ComplianceModule
+    participant L as LedgerModule
+    participant DB as PostgreSQL
+    actor Admin as Admin/Compliance
 
-  Person(sender, "Emisor", "Inicia la transferencia")
-  Person(admin, "Admin/Compliance", "Aprueba o rechaza")
-  ContainerDb(db, "PostgreSQL", "TypeORM", "accounts, ledger, transactions")
-
-  Container_Boundary(api, "API MiniWallet") {
-    Component(transfers, "TransfersModule", "Nest", "Orquesta")
-    Component(compliance, "ComplianceModule", "Nest", "Hold + decisión")
-    Component(ledger, "LedgerModule", "Nest", "Asientos + saldos")
-  }
-
-  Rel(sender, transfers, "1. POST /transfers + Idempotency-Key (monto >= 1000)", "HTTPS/JSON")
-  Rel(transfers, ledger, "2. Dedup key + lock emisor (FOR UPDATE) + valida saldo")
-  Rel(ledger, db, "3. Journal USER_A -m / COMPLIANCE_HOLD +m; tx = PENDING_REVIEW", "SQL")
-  Rel(transfers, sender, "4. 202 TRANSACTION_PENDING_REVIEW", "HTTPS/JSON")
-  Rel(admin, compliance, "5. POST /admin/transactions/:id/approve", "HTTPS/JSON")
-  Rel(compliance, ledger, "6. Journal COMPLIANCE_HOLD -m / USER_B +m; tx = APPROVED -> SETTLED")
-  Rel(ledger, db, "7. Asientos de liquidación (tx ACID)", "SQL")
-
-  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
+    Sender->>T: 1. POST /transfers + Idempotency-Key (monto >= 1000)
+    T->>C: 2. delega hold (dedup key + valida)
+    C->>L: 3. postJournal(TRANSFER_HOLD)
+    L->>DB: lock emisor (FOR UPDATE), USER_A −m / COMPLIANCE_HOLD +m, tx=PENDING_REVIEW
+    T-->>Sender: 4. 202 TRANSACTION_PENDING_REVIEW
+    Note over Sender,DB: El emisor ya fue descontado; el receptor NO recibió nada (dinero en HOLD)
+    Admin->>C: 5. POST /admin/transactions/:id/approve
+    C->>L: 6. postJournal(HOLD_RELEASE)
+    L->>DB: 7. COMPLIANCE_HOLD −m / USER_B +m, tx=APPROVED → SETTLED
+    C-->>Admin: 200 SETTLED
 ```
 
 ## Lectura del flujo
