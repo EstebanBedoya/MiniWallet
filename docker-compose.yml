@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-miniwallet}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-miniwallet}
+      POSTGRES_DB: ${DB_NAME:-miniwallet}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-miniwallet} -d ${DB_NAME:-miniwallet}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    environment:
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-miniwallet}
+      DB_PASSWORD: ${DB_PASSWORD:-miniwallet}
+      DB_NAME: ${DB_NAME:-miniwallet}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-real-deployments}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-3600}
+      SEED_BALANCE: ${SEED_BALANCE:-5000.00}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@miniwallet.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin12345}
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
