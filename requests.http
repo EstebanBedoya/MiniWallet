@@ -1,0 +1,151 @@
+### MiniWallet — colección de requests
+# Compatible con REST Client (VS Code) y el HTTP client de JetBrains.
+# Los endpoints marcados [PENDIENTE - Slice N] todavía no existen; se habilitan
+# a medida que avanzan los slices del build (ver docs/BUILD_CONVENTIONS.md).
+
+@baseUrl = http://localhost:3000
+
+############################################
+# Slice 0 — Scaffolding (DISPONIBLE)
+############################################
+
+### Healthcheck (liveness + readiness de la DB)
+GET {{baseUrl}}/health
+
+
+############################################
+# Slice 1 — Auth (DISPONIBLE)
+############################################
+
+### Registro de usuario
+# @name register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "ana@example.com",
+  "password": "Sup3rS3cret!",
+  "name": "Ana"
+}
+
+### Login (devuelve JWT)
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@example.com",
+  "password": "Sup3rS3cret!"
+}
+
+### Captura el token del login para reusarlo abajo
+@token = {{login.response.body.accessToken}}
+
+### Usuario actual (ruta protegida — verifica el guard JWT)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+
+############################################
+# Slice 2 — Ledger / saldo (DISPONIBLE)
+############################################
+
+### Saldo del usuario actual (disponible + pendiente)
+GET {{baseUrl}}/accounts/me
+Authorization: Bearer {{token}}
+
+
+############################################
+# Slice 3 — Transferencias < $1000 (DISPONIBLE)
+############################################
+
+### Transferencia < $1000 (settlement inmediato)
+# Requiere Idempotency-Key generada por el cliente (DOMAIN_SPEC §8).
+# receiverId como string; usá un userId real de un registro previo.
+POST {{baseUrl}}/transfers
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: 11111111-1111-1111-1111-111111111111
+
+{
+  "receiverId": "2",
+  "amount": "250.00"
+}
+
+### Reintento idempotente (misma key + mismos params → replay, no duplica)
+POST {{baseUrl}}/transfers
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: 11111111-1111-1111-1111-111111111111
+
+{
+  "receiverId": "2",
+  "amount": "250.00"
+}
+
+### Transferencia >= $1000 → 202 PENDING_REVIEW (hold de compliance)
+# @name hold
+POST {{baseUrl}}/transfers
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: 22222222-2222-2222-2222-222222222222
+
+{
+  "receiverId": "2",
+  "amount": "1500.00"
+}
+
+
+############################################
+# Slice 4 — Admin / Compliance (DISPONIBLE)
+############################################
+
+### Login admin (bootstrapeado al arranque: ADMIN_EMAIL / ADMIN_PASSWORD)
+# @name adminLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@miniwallet.local",
+  "password": "admin12345"
+}
+
+@adminToken = {{adminLogin.response.body.accessToken}}
+
+### Aprobar una transacción retenida (solo ADMIN) → SETTLED, acredita al receptor
+POST {{baseUrl}}/admin/transactions/{{hold.response.body.transactionId}}/approve
+Authorization: Bearer {{adminToken}}
+
+### Rechazar una transacción retenida (solo ADMIN) → REJECTED, reembolsa al emisor
+POST {{baseUrl}}/admin/transactions/{{hold.response.body.transactionId}}/reject
+Authorization: Bearer {{adminToken}}
+
+### Transacciones sospechosas (solo ADMIN) — reporta con reasons (C1–C3)
+GET {{baseUrl}}/admin/transactions/suspicious
+Authorization: Bearer {{adminToken}}
+
+
+############################################
+# Slice 5 — Historial (DISPONIBLE)
+############################################
+
+### Historial paginado del usuario (emisor o receptor, más reciente primero)
+GET {{baseUrl}}/transactions?page=1&limit=20
+Authorization: Bearer {{token}}
+
+
+############################################
+# Slice 4 — Admin / Compliance  [PENDIENTE]
+############################################
+
+### Aprobar una transacción retenida
+POST {{baseUrl}}/admin/transactions/1/approve
+Authorization: Bearer {{token}}
+
+### Rechazar una transacción retenida
+POST {{baseUrl}}/admin/transactions/1/reject
+Authorization: Bearer {{token}}
+
+### Transacciones sospechosas
+GET {{baseUrl}}/admin/transactions/suspicious
+Authorization: Bearer {{token}}
