@@ -9,6 +9,8 @@ import request from 'supertest';
 process.env.SEED_BALANCE = '2000.00';
 process.env.ADMIN_EMAIL = 'admin@miniwallet.local';
 process.env.ADMIN_PASSWORD = 'admin12345';
+// The suite fires many requests from one IP; lift the rate limit for tests.
+process.env.THROTTLE_LIMIT = '100000';
 
 import { AppModule } from '../src/app.module';
 
@@ -277,6 +279,55 @@ describe('Transfers flow (e2e) — TC-INT-1', () => {
       .get('/admin/transactions/suspicious')
       .set('Authorization', `Bearer ${token}`);
     expect(forbidden.status).toBe(403);
+  });
+
+  it('serializes concurrent transfers on the same sender — no overdraft (TC-CONC-1/2)', async () => {
+    const sender = await register('conc-s');
+    const receiver = await register('conc-r');
+    const token = await login(sender.email);
+
+    // Seed is 2000. Fire 5 concurrent transfers of 500 (total 2500 > 2000):
+    // exactly 4 must fit, 1 must fail, and the balance must never go negative.
+    const attempts = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        http()
+          .post('/transfers')
+          .set('Authorization', `Bearer ${token}`)
+          .set('Idempotency-Key', randomUUID())
+          .send({ receiverId: receiver.userId, amount: '500.00' }),
+      ),
+    );
+
+    const ok = attempts.filter((r) => r.status === 201);
+    const failed = attempts.filter((r) => r.status === 422);
+    expect(ok).toHaveLength(4);
+    expect(failed).toHaveLength(1);
+    expect(failed[0].body.code).toBe('INSUFFICIENT_BALANCE');
+    expect(await balance(token)).toBe('0.00'); // drained exactly, never negative
+  });
+
+  it('does not deadlock on crossing transfers A->B and B->A (TC-CONC-4)', async () => {
+    const a = await register('cross-a');
+    const b = await register('cross-b');
+    const ta = await login(a.email);
+    const tb = await login(b.email);
+
+    const [r1, r2] = await Promise.all([
+      http()
+        .post('/transfers')
+        .set('Authorization', `Bearer ${ta}`)
+        .set('Idempotency-Key', randomUUID())
+        .send({ receiverId: b.userId, amount: '100.00' }),
+      http()
+        .post('/transfers')
+        .set('Authorization', `Bearer ${tb}`)
+        .set('Idempotency-Key', randomUUID())
+        .send({ receiverId: a.userId, amount: '100.00' }),
+    ]);
+
+    // Ordered locks (by account_id) prevent the classic deadlock; both settle.
+    expect(r1.status).toBe(201);
+    expect(r2.status).toBe(201);
   });
 
   it('holds the accounting invariants after all the activity', async () => {
