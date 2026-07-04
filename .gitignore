@@ -21,3 +21,5 @@ npm-debug.log*
 # Agent tooling (local, not part of the deliverable)
 .claude/
 .atl/
+.agents/
+skills-lock.json
