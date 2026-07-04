@@ -37,5 +37,18 @@ services:
       db:
         condition: service_healthy
 
+  web:
+    build:
+      context: ./frontend
+      args:
+        # Baked into the Next.js /api rewrite at build time (points at the api service).
+        API_INTERNAL_URL: http://api:3000
+    environment:
+      PORT: 3000
+    ports:
+      - "${WEB_PORT:-3001}:3000"
+    depends_on:
+      - api
+
 volumes:
   pgdata:
