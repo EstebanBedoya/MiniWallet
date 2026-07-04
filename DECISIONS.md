@@ -57,13 +57,19 @@ Las decisiones que se toman recién durante el build quedan marcadas **[PENDIENT
 
 ---
 
-## ADR-004 — [PENDIENTE] ORM (TypeORM) vs. SQL crudo en el camino crítico
+## ADR-004 — ORM (TypeORM) con SQL explícito en el camino crítico
+
+**Estado:** Aceptada (cerrada en el build)
 
 **Contexto.** El camino de débito/lock/asiento es el más sensible. TypeORM da productividad pero puede ocultar el SQL que importa (el `FOR UPDATE`, el aislamiento de la transacción).
 
-**Decisión.** [PENDIENTE] — se decide durante el build si el path crítico usa el query builder/lock de TypeORM o SQL explícito. Criterio: que el lock y la atomicidad sean **legibles y verificables**, no mágicos.
+**Decisión.** Se usa **TypeORM en todo el proyecto**, pero en el path crítico el SQL sensible queda **explícito y legible**, no mágico: la transferencia corre dentro de `dataSource.transaction(...)`; el bloqueo pesimista se toma con `SELECT … FOR UPDATE` explícito ordenado por `account_id` (evita deadlocks); los asientos se insertan y el saldo cacheado se actualiza con `UPDATE accounts SET balance = balance + $1` en `NUMERIC` (nunca sumando floats en JS); la idempotencia usa `INSERT … ON CONFLICT DO NOTHING` (ADR-014). Los cómputos de solo lectura (p. ej. saldo pendiente = `SUM` de `PENDING_REVIEW`) usan el query builder. Criterio cumplido: lock y atomicidad **verificables** leyendo el código, no confiando en la magia del ORM.
 
-**Alternativas / consecuencias.** [PENDIENTE al implementar]
+**Alternativas consideradas.**
+- *SQL crudo con un driver (`pg`) sin ORM:* máximo control pero mucho boilerplate para mapping/migraciones; el 25% de calidad de código pesa más con capas limpias.
+- *ORM que abstrae del todo el lock (repos "mágicos"):* se rechazó por opacar justo lo que hay que poder defender en el code review.
+
+**Consecuencias.** (+) Productividad del ORM sin perder de vista el SQL crítico; el `FOR UPDATE` y la atomicidad son auditables. (−) Mezcla dos estilos (query builder para lecturas, SQL explícito para el path de dinero), pero es una separación intencional, no accidental.
 
 ---
 

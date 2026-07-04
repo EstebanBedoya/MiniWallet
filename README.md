@@ -45,7 +45,7 @@ que el backend no se toca. Detalle en `docs/features/frontend.md`.
 Flujo de demo:
 1. Registrate en `/register` → ves tu saldo semilla ($5.000).
 2. Enviá $250 a otro usuario → se liquida al instante (SETTLED).
-3. Enviá $1.500 → aviso de compliance, queda "En revisión" (el saldo se descuenta ya).
+3. Enviá $1.500 → aviso de compliance, queda "En revisión". El saldo disponible se descuenta ya y aparece como **"Retenido (en revisión)"** en tu tarjeta de saldo (saldo disponible vs. pendiente, la tensión del enunciado).
 4. Entrá como admin (`ADMIN_EMAIL`/`ADMIN_PASSWORD` del compose) → panel de compliance →
    aprobás el hold y recién ahí se acredita al receptor.
 
@@ -106,6 +106,7 @@ docker compose exec -T db psql -U miniwallet -d miniwallet -t < scripts/validate
 - JWT sin refresh token ni revocación en esta versión.
 - Seguridad básica presente (rate limiting global vía `@nestjs/throttler` + `helmet`); un endurecimiento por-endpoint (límites más estrictos en login/transferencias) queda como mejora futura.
 - Sin multi-moneda (todo USD). Un solo nodo de API + una DB.
+- **Frontend** (complemento, no exigido por el enunciado): guarda el JWT en `localStorage` con guard de rutas client-side (la autorización real la hace el backend en cada request); endurecer a cookie `httpOnly` queda como mejora futura (ADR-019). No hay directorio de usuarios: para transferir se usa el ID numérico del destinatario.
 - Detalle completo en `docs/RISKS_AND_SCALABILITY.md` §1.
 
 ## Cómo escalaría esto
