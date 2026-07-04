@@ -36,6 +36,27 @@ pnpm start:dev   # requiere una PostgreSQL accesible según .env
 
 Copiar `.env.example` a `.env` y ajustar. Migraciones: `pnpm migration:run`.
 
+## Tests
+
+```bash
+pnpm test        # unitarios (no requieren base de datos)
+pnpm test:e2e    # integración — REQUIERE la base de datos corriendo
+pnpm lint        # ESLint + Prettier
+```
+
+> **Importante para el test de integración:** `pnpm test:e2e` levanta la app y se
+> conecta a PostgreSQL en `localhost:5432`. Antes de correrlo, tené la base
+> arriba con `docker compose up -d db` (o `docker compose up`). El test cubre el
+> flujo completo de transferencia: settlement < $1000, idempotencia, hold de
+> compliance ≥ $1000 (aprobar/rechazar), historial y detección de sospechosas,
+> y valida los invariantes contables al final.
+
+Validador de invariantes contables (SQL, sobre la base en Docker):
+
+```bash
+docker compose exec -T db psql -U miniwallet -d miniwallet -t < scripts/validate_ledger_invariants.sql
+```
+
 ## Documentación
 
 | Doc | Contenido |
