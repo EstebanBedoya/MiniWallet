@@ -18,7 +18,9 @@ export class CreateLedger1751600000000 implements MigrationInterface {
     await queryRunner.query(
       `CREATE UNIQUE INDEX "accounts_user_uq" ON "accounts" ("user_id") WHERE "user_id" IS NOT NULL`,
     );
-    await queryRunner.query(`CREATE INDEX "accounts_user_id_idx" ON "accounts" ("user_id")`);
+    await queryRunner.query(
+      `CREATE INDEX "accounts_user_id_idx" ON "accounts" ("user_id")`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE "journals" (
@@ -29,7 +31,9 @@ export class CreateLedger1751600000000 implements MigrationInterface {
         "created_at"     TIMESTAMPTZ NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(`CREATE INDEX "journals_tx_idx" ON "journals" ("transaction_id")`);
+    await queryRunner.query(
+      `CREATE INDEX "journals_tx_idx" ON "journals" ("transaction_id")`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE "ledger_entries" (
@@ -40,8 +44,12 @@ export class CreateLedger1751600000000 implements MigrationInterface {
         "created_at" TIMESTAMPTZ NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(`CREATE INDEX "ledger_journal_idx" ON "ledger_entries" ("journal_id")`);
-    await queryRunner.query(`CREATE INDEX "ledger_account_idx" ON "ledger_entries" ("account_id")`);
+    await queryRunner.query(
+      `CREATE INDEX "ledger_journal_idx" ON "ledger_entries" ("journal_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "ledger_account_idx" ON "ledger_entries" ("account_id")`,
+    );
 
     // Bootstrap the two system accounts (one-time).
     await queryRunner.query(

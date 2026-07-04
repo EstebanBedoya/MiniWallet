@@ -1,16 +1,7 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 export type JournalKind =
-  | 'SEED'
-  | 'TRANSFER_SETTLE'
-  | 'TRANSFER_HOLD'
-  | 'HOLD_RELEASE'
-  | 'HOLD_REFUND';
+  'SEED' | 'TRANSFER_SETTLE' | 'TRANSFER_HOLD' | 'HOLD_RELEASE' | 'HOLD_REFUND';
 
 /** A journal groups the ledger entries of one balanced accounting event. */
 @Entity('journals')

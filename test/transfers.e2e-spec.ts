@@ -43,7 +43,11 @@ describe('Transfers flow (e2e) — TC-INT-1', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     await app.init();
     ds = app.get(DataSource);
@@ -262,7 +266,9 @@ describe('Transfers flow (e2e) — TC-INT-1', () => {
       .set('Authorization', `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
 
-    const allReasons = (res.body as Array<{ reasons: string[] }>).flatMap((t) => t.reasons);
+    const allReasons = (res.body as Array<{ reasons: string[] }>).flatMap(
+      (t) => t.reasons,
+    );
     expect(allReasons).toContain('STRUCTURING'); // the criterion that matters (evasion)
     expect(allReasons).toContain('HIGH_AMOUNT'); // from the >= $1000 holds earlier
 
@@ -274,7 +280,9 @@ describe('Transfers flow (e2e) — TC-INT-1', () => {
   });
 
   it('holds the accounting invariants after all the activity', async () => {
-    const [{ sum }] = await ds.query('SELECT COALESCE(SUM(balance),0) AS sum FROM accounts');
+    const [{ sum }] = await ds.query(
+      'SELECT COALESCE(SUM(balance),0) AS sum FROM accounts',
+    );
     expect(Number(sum)).toBe(0); // conservation
 
     const brokenJournals = await ds.query(

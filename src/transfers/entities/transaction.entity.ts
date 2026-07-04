@@ -6,11 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type TransactionStatus =
-  | 'PENDING_REVIEW'
-  | 'APPROVED'
-  | 'REJECTED'
-  | 'SETTLED';
+export type TransactionStatus = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'SETTLED';
 
 @Entity('transactions')
 export class Transaction {

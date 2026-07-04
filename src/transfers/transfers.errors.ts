@@ -28,6 +28,9 @@ export class IdempotencyKeyConflictError extends ConflictException {
 
 export class MissingIdempotencyKeyError extends BadRequestException {
   constructor() {
-    super({ code: 'MISSING_IDEMPOTENCY_KEY', message: 'Idempotency-Key header is required' });
+    super({
+      code: 'MISSING_IDEMPOTENCY_KEY',
+      message: 'Idempotency-Key header is required',
+    });
   }
 }

@@ -21,8 +21,12 @@ export class CreateAuditAndRoles1751800000000 implements MigrationInterface {
         "created_at"     TIMESTAMPTZ NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(`CREATE INDEX "audit_tx_idx" ON "audit_log" ("transaction_id")`);
-    await queryRunner.query(`CREATE INDEX "audit_actor_idx" ON "audit_log" ("actor_user_id")`);
+    await queryRunner.query(
+      `CREATE INDEX "audit_tx_idx" ON "audit_log" ("transaction_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "audit_actor_idx" ON "audit_log" ("actor_user_id")`,
+    );
     await queryRunner.query(
       `CREATE INDEX "audit_action_created_idx" ON "audit_log" ("action", "created_at" DESC)`,
     );

@@ -42,7 +42,10 @@ export class TransfersService {
   ): Promise<TransferResult> {
     if (!idempotencyKey) throw new MissingIdempotencyKeyError();
     if (toCents(dto.amount) <= 0n) {
-      throw new BadRequestException({ code: 'INVALID_AMOUNT', message: 'amount must be > 0' });
+      throw new BadRequestException({
+        code: 'INVALID_AMOUNT',
+        message: 'amount must be > 0',
+      });
     }
     if (dto.receiverId === senderUserId) throw new SelfTransferNotAllowedError();
 

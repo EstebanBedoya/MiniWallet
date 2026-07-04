@@ -51,8 +51,8 @@ export class LedgerService {
 
     // Lock the involved accounts in a deterministic order (asc account_id) to
     // avoid deadlocks between crossing operations.
-    const accountIds = [...new Set(lines.map((l) => l.accountId))].sort(
-      (a, b) => (BigInt(a) < BigInt(b) ? -1 : 1),
+    const accountIds = [...new Set(lines.map((l) => l.accountId))].sort((a, b) =>
+      BigInt(a) < BigInt(b) ? -1 : 1,
     );
     const accounts = await manager
       .getRepository(Account)
@@ -103,15 +103,13 @@ export class LedgerService {
     userId: string,
     seedAmount: string,
   ): Promise<Account> {
-    const account = await manager
-      .getRepository(Account)
-      .save(
-        manager.getRepository(Account).create({
-          accountType: 'USER',
-          userId,
-          balance: '0',
-        }),
-      );
+    const account = await manager.getRepository(Account).save(
+      manager.getRepository(Account).create({
+        accountType: 'USER',
+        userId,
+        balance: '0',
+      }),
+    );
 
     const funding = await this.getSystemAccount(manager, 'SYSTEM_FUNDING');
     await this.doPostJournal(manager, 'SEED', [

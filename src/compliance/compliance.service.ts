@@ -32,10 +32,7 @@ export class ComplianceService {
    * leaves the transaction PENDING_REVIEW — the receiver is NOT credited yet.
    * Runs inside the caller's transaction.
    */
-  async placeHold(
-    manager: EntityManager,
-    params: PlaceHoldParams,
-  ): Promise<Transaction> {
+  async placeHold(manager: EntityManager, params: PlaceHoldParams): Promise<Transaction> {
     const tx = await manager.getRepository(Transaction).save(
       manager.getRepository(Transaction).create({
         senderId: params.senderUserId,
@@ -91,7 +88,9 @@ export class ComplianceService {
         { manager, transactionId },
       );
 
-      await manager.getRepository(Transaction).update({ transactionId }, { status: 'SETTLED' });
+      await manager
+        .getRepository(Transaction)
+        .update({ transactionId }, { status: 'SETTLED' });
       await this.audit.record(manager, {
         actorUserId: adminUserId,
         action: 'TX_SETTLED',
@@ -121,7 +120,9 @@ export class ComplianceService {
         { manager, transactionId },
       );
 
-      await manager.getRepository(Transaction).update({ transactionId }, { status: 'REJECTED' });
+      await manager
+        .getRepository(Transaction)
+        .update({ transactionId }, { status: 'REJECTED' });
       await this.audit.record(manager, {
         actorUserId: adminUserId,
         action: 'TX_REJECTED',

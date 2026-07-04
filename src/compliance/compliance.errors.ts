@@ -17,12 +17,18 @@ export class TransactionNotPendingReviewError extends ConflictException {
 
 export class TransactionAlreadySettledError extends ConflictException {
   constructor() {
-    super({ code: 'TRANSACTION_ALREADY_SETTLED', message: 'Transaction already settled' });
+    super({
+      code: 'TRANSACTION_ALREADY_SETTLED',
+      message: 'Transaction already settled',
+    });
   }
 }
 
 export class TransactionAlreadyRejectedError extends ConflictException {
   constructor() {
-    super({ code: 'TRANSACTION_ALREADY_REJECTED', message: 'Transaction already rejected' });
+    super({
+      code: 'TRANSACTION_ALREADY_REJECTED',
+      message: 'Transaction already rejected',
+    });
   }
 }

@@ -31,7 +31,11 @@ describe('AuthService', () => {
     ledgerService = { provisionUserAccount: jest.fn() };
 
     // manager.getRepository(User) → repo whose save echoes the entity with an id.
-    savedUser = jest.fn(async (u: Partial<User>) => ({ ...u, userId: '1', createdAt: new Date() }));
+    savedUser = jest.fn(async (u: Partial<User>) => ({
+      ...u,
+      userId: '1',
+      createdAt: new Date(),
+    }));
     const managerMock = {
       getRepository: () => ({ create: (u: Partial<User>) => u, save: savedUser }),
     };
@@ -45,7 +49,10 @@ describe('AuthService', () => {
         { provide: UsersService, useValue: usersService },
         { provide: LedgerService, useValue: ledgerService },
         { provide: DataSource, useValue: dataSource },
-        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('5000.00') } },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('5000.00') },
+        },
         {
           provide: JwtService,
           useValue: { sign: jest.fn().mockReturnValue('signed.jwt.token') },
@@ -66,7 +73,11 @@ describe('AuthService', () => {
         name: 'Ana',
       });
 
-      expect(result).toMatchObject({ userId: '1', email: 'ana@example.com', name: 'Ana' });
+      expect(result).toMatchObject({
+        userId: '1',
+        email: 'ana@example.com',
+        name: 'Ana',
+      });
       expect((result as unknown as Record<string, unknown>).passwordHash).toBeUndefined();
 
       // se guardó hasheada, nunca en claro
@@ -86,18 +97,28 @@ describe('AuthService', () => {
       usersService.findByEmail.mockResolvedValue(buildUser());
 
       await expect(
-        service.register({ email: 'ANA@example.com', password: 'Sup3rS3cret!', name: 'Ana' }),
+        service.register({
+          email: 'ANA@example.com',
+          password: 'Sup3rS3cret!',
+          name: 'Ana',
+        }),
       ).rejects.toBeInstanceOf(ConflictException);
       expect(dataSource.transaction).not.toHaveBeenCalled();
     });
 
     it('TC-AUTH-6b: carrera concurrente (unique_violation) → ConflictException', async () => {
       usersService.findByEmail.mockResolvedValue(null);
-      const dbError = new QueryFailedError('insert', [], { code: '23505' } as unknown as Error);
+      const dbError = new QueryFailedError('insert', [], {
+        code: '23505',
+      } as unknown as Error);
       dataSource.transaction.mockRejectedValue(dbError);
 
       await expect(
-        service.register({ email: 'ana@example.com', password: 'Sup3rS3cret!', name: 'Ana' }),
+        service.register({
+          email: 'ana@example.com',
+          password: 'Sup3rS3cret!',
+          name: 'Ana',
+        }),
       ).rejects.toBeInstanceOf(ConflictException);
     });
   });
