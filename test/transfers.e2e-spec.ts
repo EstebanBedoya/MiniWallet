@@ -41,6 +41,19 @@ describe('Transfers flow (e2e) — TC-INT-1', () => {
       .set('Authorization', `Bearer ${token}`)
       .then((res) => res.body.balanceAvailable as string);
 
+  const account = (token: string) =>
+    request(app.getHttpServer())
+      .get('/accounts/me')
+      .set('Authorization', `Bearer ${token}`)
+      .then(
+        (res) =>
+          res.body as {
+            balanceAvailable: string;
+            pendingIncoming: string;
+            pendingOutgoing: string;
+          },
+      );
+
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
@@ -173,6 +186,15 @@ describe('Transfers flow (e2e) — TC-INT-1', () => {
     expect(await balance(token)).toBe('500.00'); // 2000 - 1500 held
     expect(await balance(receiverToken)).toBe('2000.00'); // unchanged
 
+    // Pending balances (computed from PENDING_REVIEW) surface the hold: the
+    // sender sees it as outgoing (could return), the receiver as incoming.
+    const senderPending = await account(token);
+    expect(senderPending.pendingOutgoing).toBe('1500.00');
+    expect(senderPending.pendingIncoming).toBe('0.00');
+    const receiverPending = await account(receiverToken);
+    expect(receiverPending.pendingIncoming).toBe('1500.00');
+    expect(receiverPending.pendingOutgoing).toBe('0.00');
+
     // Non-admin cannot approve.
     const forbidden = await http()
       .post(`/admin/transactions/${hold.body.transactionId}/approve`)
@@ -186,6 +208,10 @@ describe('Transfers flow (e2e) — TC-INT-1', () => {
     expect(approve.status).toBe(200);
     expect(approve.body.status).toBe('SETTLED');
     expect(await balance(receiverToken)).toBe('3500.00'); // 2000 + 1500
+
+    // Once settled, the hold clears from both pending views.
+    expect((await account(token)).pendingOutgoing).toBe('0.00');
+    expect((await account(receiverToken)).pendingIncoming).toBe('0.00');
 
     // Re-approving a settled tx is rejected by the state machine.
     const again = await http()

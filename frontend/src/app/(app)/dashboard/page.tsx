@@ -63,7 +63,12 @@ export default function DashboardPage() {
       {loading ? (
         <Skeleton className="h-40 w-full rounded-2xl" />
       ) : account ? (
-        <BalanceCard balance={account.balanceAvailable} userId={userId} />
+        <BalanceCard
+          balance={account.balanceAvailable}
+          pendingIncoming={account.pendingIncoming}
+          pendingOutgoing={account.pendingOutgoing}
+          userId={userId}
+        />
       ) : noWallet ? (
         <div className="rounded-2xl border border-border bg-card p-6">
           <p className="text-sm font-medium">Cuenta administrativa</p>
